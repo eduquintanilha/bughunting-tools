@@ -9,8 +9,8 @@ subfinder -silent -all -d $DOMAIN >> subs
 
 # Get subdomains using bruteforce
 echo "# Get subdomains using bruteforce"
-for sub in $(cat /usr/share/seclists/Discovery/DNS/subdomains-top1million-5000.txt); do host $sub.$DOMAIN >> subs-bruterecon; done
-#for sub in $(cat /usr/share/seclists/Discovery/DNS/namelist.txt); do host $sub.$DOMAIN >> subs-bruterecon; done
+#for sub in $(cat /usr/share/seclists/Discovery/DNS/subdomains-top1million-5000.txt); do host $sub.$DOMAIN >> subs-bruterecon; done
+for sub in $(cat /usr/share/seclists/Discovery/DNS/namelist.txt); do host $sub.$DOMAIN >> subs-bruterecon; done
 
 # Clean "not found" subdomains
 echo "# Clean 'not found' subdomains"

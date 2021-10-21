@@ -25,6 +25,7 @@ printf "\n\n# API_KEY => $API_KEY \n\n"
 for url in ${URLS[*]}
     do
         printf "# Testing => $url$API_KEY \n\n"
-        curl --insecure -k $url$API_KEY
+        curl --insecure -s -I $url$API_KEY | grep HTTP/
+        curl --insecure -s $url$API_KEY
         printf "\n\n##########################################\n\n"
     done
