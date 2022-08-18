@@ -14,14 +14,17 @@ echo "# Get subdomains using assetfinder"
 assetfinder --subs-only $DOMAIN >> subs
 
 echo "# Get subdomains using amass"
-amass enum -passive -norecursive -noalts -d $DOMAIN >> subs
+amass enum -passive -norecursive -noalts -d $DOMAIN -o subs-amass
 
 echo "# Get subdomains using sublist3r"
-sublist3r -d $DOMAIN -n -t 200 >> subs
+sublist3r -d $DOMAIN -n -t 200 -o subs-subliste3r
 
 # Get subdomains using CERT.SH
 echo "# Get subdomains using CERT.SH"
 curl -s "https://crt.sh/?q=%25.$DOMAIN&output=json" | jq -r '.[].name_value' | sed 's/\*\.//g' | anew >> subs
+
+echo "# Group all subdomains"
+cat subs-* > subs;
 
 # Get subdomains using bruteforce
 echo "# Get subdomains using bruteforce"
@@ -50,7 +53,7 @@ for sub in $(cat subs); do host $sub | grep -i "alias" | sort -u >> subs-alias; 
 echo "# Get only alive subdomains"
 cat subs | httpx -silent -timeout 15 -follow-redirects -no-fallback >> subs-alive
 
-# Scan alive subdomains with all Nuclei templates
+# Scan alive subdomains with all Nuclei templates using TORSOCKS
 #echo "# Scan alive subdomains with all Nuclei templates"
 #nuclei -l subs-alive -t ~/nuclei-templates -silent -o nuclei-scan-subs
 
