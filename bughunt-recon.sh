@@ -50,7 +50,7 @@ for sub in $(cat subs); do host $sub | grep -i "alias" | sort -u >> subs-alias; 
 echo "# Get only alive subdomains"
 cat subs | httpx -silent -timeout 15 -follow-redirects -no-fallback >> subs-alive
 
-# Scan alive subdomains with all Nuclei templates using TORSOCKS
+# Scan alive subdomains with all Nuclei templates
 #echo "# Scan alive subdomains with all Nuclei templates"
 #nuclei -l subs-alive -t ~/nuclei-templates -silent -o nuclei-scan-subs
 
