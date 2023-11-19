@@ -14,7 +14,8 @@ echo "# Get subdomains using assetfinder"
 assetfinder --subs-only $DOMAIN >> subs
 
 echo "# Get subdomains using amass"
-amass enum -passive -norecursive -d $DOMAIN -o subs-amass
+#amass enum -passive -norecursive -d $DOMAIN -o subs-amass
+amass enum -brute -w /usr/share/seclists/Discovery/DNS/subdomains-top1million-5000.txt -d $DOMAIN -o subs-amass
 
 echo "# Get subdomains using sublist3r"
 python3 ~/tools/sublist3r/sublist3r.py -d $DOMAIN -n -t 200 -o subs-subliste3r
@@ -26,10 +27,10 @@ curl -s "https://crt.sh/?q=%25.$DOMAIN&output=json" | jq -r '.[].name_value' | s
 echo "# Group all subdomains"
 cat subs-* > subs;
 
-# Get subdomains using bruteforce
-echo "# Get subdomains using bruteforce"
-for sub in $(cat /usr/share/seclists/Discovery/DNS/subdomains-top1million-5000.txt); do host $sub.$DOMAIN >> subs-bruterecon; done
-#for sub in $(cat /usr/share/seclists/Discovery/DNS/namelist.txt); do host $sub.$DOMAIN >> subs-bruterecon; done
+# Get subdomains using bruteforce (disabled for use bruteforce with amass)
+#echo "# Get subdomains using bruteforce"
+#for sub in $(cat /usr/share/seclists/Discovery/DNS/subdomains-top1million-5000.txt); do host $sub.$DOMAIN >> subs-bruterecon; done
+
 
 # Clean "not found" subdomains
 echo "# Clean 'not found' subdomains"
