@@ -33,8 +33,8 @@ cat subs-* > subs;
 
 
 # Clean "not found" subdomains
-echo "# Clean 'not found' subdomains"
-cat subs-bruterecon | grep -vi refused | grep -vi "not found" | awk '{print $1}' | sort -u >> subs
+#echo "# Clean 'not found' subdomains"
+#cat subs-bruterecon | grep -vi refused | grep -vi "not found" | awk '{print $1}' | sort -u >> subs
 
 
 # Remove duplicates
