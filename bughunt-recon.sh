@@ -1,62 +1,71 @@
 #!/bin/bash
 
-# Get domain for parameter script
-DOMAIN=$1
+if [ $# -eq 0 ]; then
+    echo "Uso: $0 <PROGRAM_PLATFORM>"
+    echo "Exemplo: $0 Redcare/Intigriti"
+    exit 1
+fi
 
-echo "# Started scan on domain = $DOMAIN | Date = $(date)"
+PROGRAM_PLATFORM="$1"
 
-# Get all subdomains using subfinder
-echo "# Get subdomains using subfinder"
-subfinder -recursive -silent -all -t 200 -d $DOMAIN >> subs
+if [ ! -f "scope" ]; then
+    echo "[!] Erro: arquivo 'scope' não encontrado no diretório atual"
+    echo "[*] Crie um arquivo 'scope' com os domínios (um por linha)"
+    exit 1
+fi
 
-# Get subdomains using assetfinder
-echo "# Get subdomains using assetfinder"
-assetfinder --subs-only $DOMAIN >> subs
+if [ ! -s "scope" ]; then
+    echo "[!] Erro: arquivo 'scope' está vazio"
+    exit 1
+fi
 
-echo "# Get subdomains using amass"
-#amass enum -passive -norecursive -d $DOMAIN -o subs-amass
-amass enum -brute -w /usr/share/seclists/Discovery/DNS/subdomains-top1million-5000.txt -d $DOMAIN -o subs-amass
+echo "## Init recon on $PROGRAM_PLATFORM ##"
+echo "[*] $(wc -l < scope) domínios no scope"
 
-echo "# Get subdomains using sublist3r"
-python3 ~/tools/sublist3r/sublist3r.py -d $DOMAIN -n -t 200 -o subs-subliste3r
+echo "[+] Enumerando subdomínios com subfinder..."
+cat scope | subfinder -silent -o subdomains -all
 
-# Get subdomains using CERT.SH
-echo "# Get subdomains using CERT.SH"
-curl -s "https://crt.sh/?q=%25.$DOMAIN&output=json" | jq -r '.[].name_value' | sed 's/\*\.//g' | anew >> subs
+echo "[+] Coletando subdomínios via certificados..."
+for domain in $(cat scope); do
+    get-subdomains-cert.sh "$domain" >> subdomains
+done
 
-echo "# Group all subdomains"
-cat subs-* > subs;
+echo "[+] Deduplicando subdomínios..."
+cat subdomains | anew subdomains.tmp && mv subdomains.tmp subdomains
+echo "[*] Total: $(wc -l < subdomains) subdomínios únicos"
 
-# Get subdomains using bruteforce (disabled for use bruteforce with amass)
-#echo "# Get subdomains using bruteforce"
-#for sub in $(cat /usr/share/seclists/Discovery/DNS/subdomains-top1million-5000.txt); do host $sub.$DOMAIN >> subs-bruterecon; done
+sudo service tor restart
 
+echo "[+] Coletando URLs com waymore..."
+cat scope | torsocks waymore -mode U -oU all-urls
 
-# Clean "not found" subdomains
-#echo "# Clean 'not found' subdomains"
-#cat subs-bruterecon | grep -vi refused | grep -vi "not found" | awk '{print $1}' | sort -u >> subs
+echo "[+] Coletando URLs com gau..."
+cat scope | torsocks gau --o gau-urls
 
+echo "[+] Executando nuclei para takeover..."
+cat subdomains | nuclei -silent -c 10 -rl 10 -o nuclei-takeover -t ~/nuclei-templates/http/takeovers/
 
-# Remove duplicates
-echo "# Remove duplicates"
-cat subs | anew | sort -u >> subs-uniq
+if [ -s nuclei-takeover ]; then
+    echo -e "\n## Takeovers encontrados em $PROGRAM_PLATFORM ##\n"
+    cat nuclei-takeover | notify -silent
+else
+    echo "[!] Nenhum takeover encontrado"
+fi
 
-# Remove subs file and rename unique subs to subs again
-echo "# Remove subs file and rename unique subs to subs again"
-rm subs
-mv subs-uniq subs
+cat gau-urls >> all-urls
+cat all-urls | anew >> all-urls-uniq
+rm all-urls && mv all-urls-uniq all-urls
 
-# Do "host" on each subdomain and get only subdomains with aliases (important for subdomains takeover)
-echo "# Do "host" on each subdomain and get only subdomains with aliases (important for subdomains takeover)"
-for sub in $(cat subs); do host $sub | grep -i "alias" | sort -u >> subs-alias; done 
+echo "[+] Buscando secrets em arquivos Javascript..."
+cat all-urls | grep "\.js" >> all-js
+cat all-js | anew | nuclei -c 10 -rl -30 -t ~/nuclei-templates/http/exposures -o nuclei-js-leaks
 
-# Get only alive subdomains
-echo "# Get only alive subdomains"
-cat subs | httpx -silent -timeout 15 -follow-redirects -no-fallback >> subs-alive
+if [ -s nuclei-js-leaks ]; then
+    echo -e "\n## Leaks encontrados em $PROGRAMA_PLATFORM ##\n"
+    cat nuclei-js-leaks | notify -silent
+else
+    echo "[!] Nenhum JS Leak encontrado"
+fi
 
-# Scan alive subdomains with all Nuclei templates using TORSOCKS
-#echo "# Scan alive subdomains with all Nuclei templates"
-#nuclei -l subs-alive -t ~/nuclei-templates -silent -o nuclei-scan-subs
+echo "[✓] Recon completo para $PROGRAM_PLATFORM" | notify -silent
 
-# End of script
-echo "# End of scan of domain = $DOMAIN | Date = $(date)"
